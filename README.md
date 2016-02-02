@@ -35,6 +35,36 @@ Configuration
 - set translations: `translations="dict.editor"` (object with editor translations -> default is english)
 - overwrite global config for each editor: `fontsize-options="fontsizeOptions" fontfamily-options="fontfamilyOptions"`
 
+Custom Formats
+==============
+
+You can set custom formats using `custom-formats="customFormats"`, this will allow the tag/attribute in the editor.
+
+See [https://github.com/quilljs/quill/blob/0.20.1/src/core/format.coffee](https://github.com/quilljs/quill/blob/0.20.1/src/core/format.coffee)
+
+Example
+```
+    $scope.customFormats = {
+
+      // custom tag
+      'blockquote': {
+        tag: 'BLOCKQUOTE',
+        button: true,
+        buttonText: 'Add Quote',
+        buttonClass: 'md-button md-accent'
+      },
+
+      // classes will always have true appended to them
+      'bears': {
+        class: 'bears-',
+        button: true,
+        buttonText: 'BEARS!!!',
+        buttonClass: 'md-button'
+      }
+    };
+
+```
+
 Translations
 ============
 

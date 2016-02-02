@@ -123,6 +123,7 @@
                     'showToolbar': '=?',
                     'fontfamilyOptions': '=?',
                     'fontsizeOptions': '=?',
+                    'customFormats': '=?',
                     'linkTooltip': '@?',
                     'imageTooltip': '@?',
                     'theme': '@?',
@@ -225,81 +226,100 @@
                     // add toolbar afterwards with a timeout to be sure that translations has replaced.
                     if ($scope.toolbar && $scope.toolbar === 'true') {
                         $timeout(function () {
-                            editor.addModule('toolbar', {
+                            var toolbar = editor.addModule('toolbar', {
                                 container: element[0].querySelector('.advanced-wrapper .toolbar-container')
                             });
                             $scope.toolbarCreated = true;
                             $scope.showToolbar = $scope.hasOwnProperty('showToolbar') ? $scope.showToolbar : true;
+
+                            // Initialize format buttons
+                            angular.forEach($scope.customFormats, function (format, key) {
+                              if (format.button) {
+                                toolbar.initFormat(key, angular.noop);
+                              }
+                            });
                         }, 0);
                     }
+
+                    // add any custom formats
+                    $timeout(function(){
+                      if ($scope.customFormats) {
+                        angular.forEach($scope.customFormats, function (value, key) {
+                          editor.addFormat(key, value);
+                        });
+                      }
+                    });
 
                     // provide event to get recognized when editor is created -> pass editor object.
                     $timeout(function(){
                        $scope.$emit('editorCreated', editor);
+                       bindWatchers();
                     });
 
-                    var updateFromPlugin = false;
-                    var updateInPlugin = false;
+                    function bindWatchers() {
+                      var updateFromPlugin = false;
+                      var updateInPlugin = false;
 
-                    // set initial value
-                    $scope.$watch(function () {
-                        return $scope.ngModel;
-                    }, function (newText) {
-                        if (updateFromPlugin) {
-                            return;
-                        }
+                      // set initial value
+                      $scope.$watch(function () {
+                          return $scope.ngModel;
+                      }, function (newText) {
+                          if (updateFromPlugin) {
+                              return;
+                          }
 
-                        if (newText !== undefined) {
-                            updateInPlugin = true;
-                            if (config.save === 'text') {
-                                editor.setText(newText);
-                            } else if (config.save === 'contents') {
-                                editor.setContents(newText);
-                            } else {
-                                editor.setHTML(newText);
-                            }
-                        }
-                    });
+                          if (newText !== undefined) {
+                              updateInPlugin = true;
+                              if (config.save === 'text') {
+                                  editor.setText(newText);
+                              } else if (config.save === 'contents') {
+                                  editor.setContents(newText);
+                              } else {
+                                  editor.setHTML(newText);
+                              }
+                          }
+                      });
 
-                    // toggle readOnly
-                    if ($scope.readOnly) {
-                        $scope.$watch(function () {
-                            return $scope.readOnly();
-                        }, function (readOnly) {
-                            editor.editor[readOnly ? 'disable' : 'enable']();
-                        });
+                      // toggle readOnly
+                      if ($scope.readOnly) {
+                          $scope.$watch(function () {
+                              return $scope.readOnly();
+                          }, function (readOnly) {
+                              editor.editor[readOnly ? 'disable' : 'enable']();
+                          });
+                      }
+
+                      $scope.regEx = /^([2-9]|[1-9][0-9]+)$/;
+
+                      // Update model on textchange
+                      editor.on('text-change', function () {
+                          var oldChange = changed;
+                          changed = true;
+                          updateFromPlugin = true;
+                          if (!updateInPlugin) {
+                              $scope.$apply(function () {
+                                  // Calculate content length
+                                  $scope.modelLength = editor.getLength();
+                                  // Check if error class should be set
+                                  if (oldChange) {
+                                      setClass();
+                                  }
+                                  var setValue;
+                                  if (config.save === 'text') {
+                                      setValue = editor.getText();
+                                  } else if (config.save === 'contents') {
+                                      setValue = editor.getContents();
+                                  } else {
+                                      setValue = editor.getHTML();
+                                  }
+                                  // Set new model value
+                                  ngModel.$setViewValue(setValue);
+                              });
+                          }
+                          updateInPlugin = false;
+                          updateFromPlugin = false;
+                      });
                     }
-
-                    $scope.regEx = /^([2-9]|[1-9][0-9]+)$/;
-
-                    // Update model on textchange
-                    editor.on('text-change', function () {
-                        var oldChange = changed;
-                        changed = true;
-                        updateFromPlugin = true;
-                        if (!updateInPlugin) {
-                            $scope.$apply(function () {
-                                // Calculate content length
-                                $scope.modelLength = editor.getLength();
-                                // Check if error class should be set
-                                if (oldChange) {
-                                    setClass();
-                                }
-                                var setValue;
-                                if (config.save === 'text') {
-                                    setValue = editor.getText();
-                                } else if (config.save === 'contents') {
-                                    setValue = editor.getContents();
-                                } else {
-                                    setValue = editor.getHTML();
-                                }
-                                // Set new model value
-                                ngModel.$setViewValue(setValue);
-                            });
-                        }
-                        updateInPlugin = false;
-                        updateFromPlugin = false;
-                    });
 
                     // Clean-up
                     element.on('$destroy', function () {
@@ -425,6 +445,9 @@
                             '<span class="ql-format-group" ng-if="shouldShow([\'link\', \'image\'])">' +
                                 '<span title="{{dict.link}}" class="ql-format-button ql-link" ng-if="shouldShow([\'link\'])"></span>' +
                                 '<span title="{{dict.image}}" class="ql-format-button ql-image" ng-if="shouldShow([\'image\'])"></span>' +
+                            '</span>' +
+                            '<span class="ql-format-group">' +
+                                '<span ng-repeat="(key, format) in customFormats" ng-if="format.button" title="{{key}}" class="{{ format.buttonClass || \'ql-format-button\' }} ql-{{key}}">{{format.buttonText}}</span>' +
                             '</span>' +
                         '</div>' +
                         '<div class="editor-container"></div>' +

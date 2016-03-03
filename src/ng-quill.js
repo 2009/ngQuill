@@ -268,7 +268,7 @@
                               return;
                           }
 
-                          if (newText !== undefined) {
+                          if (newText !== undefined && newText.length > 0) {
                               updateInPlugin = true;
                               if (config.save === 'text') {
                                   editor.setText(newText);
